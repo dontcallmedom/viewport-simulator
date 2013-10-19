@@ -374,13 +374,17 @@ var Block = function(initialWidth, initialHeight, name , options) {
 			   function () { 
 			       depCallback.call(self,dep);
 			   });
+	b.block.addEventListener("heightchange",
+			   function () { 
+			       depCallback.call(self,dep);
+			   });
 	links.push(new Bound(b.block, self, b.type));
     });
 
 
     function updateWidth(newWidth) {
 	if (newWidth !== rect.width.baseVal.value) {
-	    width = newWidth;
+	    width = Math.max(minsize,Math.min(maxsize,newWidth));
 	    rect.setAttribute("width",width);
 	    if (cx) {
 		measure.setAttribute("x2",cx + width/2);
