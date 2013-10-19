@@ -321,6 +321,9 @@ var Block = function(initialWidth, initialHeight, name , options) {
 	    var posY = y - height / 4;
 	    widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
 	}
+	if (options.openbottom) {
+	    rect.setAttribute("stroke-dasharray", (width + height) + "," + width);
+	}
 
 	ctx.appendChild(g);
 	if (options.adjustable) {
@@ -386,6 +389,9 @@ var Block = function(initialWidth, initialHeight, name , options) {
 	if (newWidth !== rect.width.baseVal.value) {
 	    width = Math.max(minsize,Math.min(maxsize,newWidth));
 	    rect.setAttribute("width",width);
+	    if (options.openbottom) {
+		rect.setAttribute("stroke-dasharray", (width + height) + "," + width);
+	    }
 	    if (cx) {
 		measure.setAttribute("x2",cx + width/2);
 	    }
@@ -397,6 +403,9 @@ var Block = function(initialWidth, initialHeight, name , options) {
 	if (newHeight !== rect.height.baseVal.value) {
 	    height = newHeight;
 	    rect.setAttribute("height",newHeight);
+	    if (options.openbottom) {
+		rect.setAttribute("stroke-dasharray", (width + height) + "," + width);
+	    }
 	    if (cy) {
 		title.setAttribute("y", cy - height/2 + 15);
 	    }
