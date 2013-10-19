@@ -1,0 +1,1 @@
+A dynamic SVG diagram that illustrates the [meta viewport algorithm](http://dev.w3.org/csswg/css-device-adapt/#viewport-meta).
