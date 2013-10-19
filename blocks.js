@@ -1,3 +1,4 @@
+(function (global) {
 var svgNS="http://www.w3.org/2000/svg";
 
 var Point = function(x,y) {
@@ -106,7 +107,7 @@ var Block = function (options) {
 	    eventListeners[eventType]=[];
 	}
 	eventListeners[eventType].push(callback);
-    }
+    };
 
     this.dispatchEvent = function (event) {
 	var listeners = eventListeners[event.type];
@@ -115,10 +116,12 @@ var Block = function (options) {
 		listeners[i]({type:event.type, value:event.value});
 	    }
 	}
-    }
+    };
 
-    function setWidth(newWidth) {
-    }
+    this.display = function (ctx, x, y) {
+	self.cx = x;
+	self.cy = y;
+    };
 
 };
 
@@ -335,12 +338,10 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     options = options || {};
     options.angle = 30;
     var self = new NamedBlock(options, name);
-    var angle = options.angle;
-    var left, top, cx = 0, cy = 0;
+    var left, top;
     var dep = [];
     var links = [];
     var depCallback = function () {};
-    var topleft, topright, bottomleft, bottomright; 
     var frozen = false;
 
     
@@ -391,10 +392,10 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    mouseHandle =  function (e) {
 		e.preventDefault();
 		var mm = function (e) {
-		    var dx = (e.movementX       ||
+		    var dx = Math.floor((e.movementX       ||
 			      e.mozMovementX    ||
 			      e.webkitMovementX ||
-			      0)  * ctx.viewBox.baseVal.width / ctx.clientWidth / Math.tan(angle * Math.PI / 180);
+			      0)  * ctx.viewBox.baseVal.width / ctx.clientWidth / Math.tan(options.angle * Math.PI / 180));
 		    self.width += dx;
 		    document.querySelector("body").classList.add("resize");
 		    e.preventDefault();
@@ -427,8 +428,8 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	ctx.appendChild(g);
 	if (options.adjustable) {
 	    self.addEventListener("widthchange", function(newWidth) {
-		var posX = cx + self.width/2;
-		var posY = cy - self.height/4;
+		var posX = self.cx + self.width/2;
+		var posY = self.cy - self.height/4;
 		widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
 	    });
 	}
@@ -457,17 +458,17 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	}
     };
 
-    self.addEventListener("widthchange",updateWidth);
-    self.addEventListener("widthchange",updateHeight);
-    self.addEventListener("widthchange",updateCx);
+    self.addEventListener("widthchange",onwidthchange);
+    self.addEventListener("widthchange",onheightchange);
+    self.addEventListener("widthchange",oncxchange);
 
     self.addEventListener("widthchange",updateLeft);
     self.addEventListener("heightchange",updateTop);
 
-    self.addEventListener("cxchange",updateCx);
+    self.addEventListener("cxchange",oncxchange);
     self.addEventListener("cxchange",updateLeft);
 
-    self.addEventListener("cychange",updateCy);
+    self.addEventListener("cychange",oncychange);
     self.addEventListener("cychange",updateTop);
 
 
@@ -491,10 +492,9 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     }
 
 
-    // TODO: rename (e.g. onWidthChange)
-    function updateWidth() {
+    function onwidthchange() {
 	if (self.width !== rect.width.baseVal.value) {
-	    rect.setAttribute("width",self.width);
+	    rect.setAttribute("width", self.width);
 	    if (options.openbottom) {
 		rect.setAttribute("stroke-dasharray", openbottomstroke());
 	    }
@@ -504,10 +504,10 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    measureVal.textContent = Math.floor(self.width) + "px";
 	}
     }
-    // TODO: rename (e.g. onHeightChange)
-    function updateHeight() {
+
+    function onheightchange() {
 	if (self.height !== rect.height.baseVal.value) {
-	    rect.setAttribute("height",self.height);
+	    rect.setAttribute("height", self.height);
 	    if (options.openbottom) {
 		rect.setAttribute("stroke-dasharray", openbottomstroke());
 	    }
@@ -517,15 +517,13 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	}
     }
 
-    // TODO: rename (e.g. onCxChange)
-    function updateCx() {
+    function oncxchange() {
 	measure.setAttribute("x2",self.cx + self.width/2);
 	measureVal.setAttribute("x", self.cx);
 	title.setAttribute("x", self.cx);
     }
 
-    // TODO: rename (e.g. onCyChange)
-    function updateCy() {
+    function oncychange() {
 	measure.setAttribute("y1", self.cy);
 	measure.setAttribute("y2", self.cy);
 	measureVal.setAttribute("y", self.cy - 15);
@@ -536,7 +534,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	var newLeft = self.cx - self.width/2;
 	if (newLeft !== left) {
 	    left = newLeft ;
-	    g.setAttribute("transform","translate("+(left + self.width/2) +",0) skewY(-" + angle +") translate(-" + (left + self.width / 2) +",0)");
+	    g.setAttribute("transform","translate("+(left + self.width/2) +",0) skewY(-" + options.angle +") translate(-" + (left + self.width / 2) +",0)");
 	    rect.setAttribute("x",left);
 	    measure.setAttribute("x1",left);
 	    self.dispatchEvent({type:"leftchange", value:left});
@@ -545,7 +543,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     function updateTop() {
 	var newTop = self.cy - self.height/2;
 	if (newTop !== top) {
-	    var skew = self.width * Math.tan(angle * Math.PI/180) / 2;
+	    var skew = self.width * Math.tan(options.angle * Math.PI/180) / 2;
 	    top = newTop;
 	    rect.setAttribute("y",top);
 	    self.dispatchEvent({type:"topchange", value:top});
@@ -579,3 +577,11 @@ var Operation = function (width, height, name, options) {
     }
     return self;
 };
+
+global.Block = (global.module || {}).exports = Block;
+global.MeasuredBlock = (global.module || {}).exports = MeasuredBlock;
+global.Operation = (global.module || {}).exports = Operation;
+global.Bound = (global.module || {}).exports = Bound;
+global.Row = (global.module || {}).exports = Row;
+global.Column = (global.module || {}).exports = Column;
+})(this);
