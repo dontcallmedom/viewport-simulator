@@ -1,11 +1,33 @@
 var svgNS="http://www.w3.org/2000/svg";
 
 var Block = function (options) {
+    var self = this;
+    var eventListeners = {};
+
+    options = options || {};
+
+    this.addEventListener = function (eventType, callback, bubble) {
+	if (!eventListeners[eventType]) {
+	    eventListeners[eventType]=[];
+	}
+	eventListeners[eventType].push(callback);
+    }
+
+    this.dispatchEvent = function (event) {
+	var listeners = eventListeners[event.type];
+	if (listeners) {
+	    for (var i = 0; i < listeners.length; i++) {
+		listeners[i]({type:event.type, value:event.value});
+	    }
+	}
+    }
 
 };
 
 var NamedBlock = function (options, name) {
-
+    var self = new Block(options);
+    self.name = name;
+    return self;
 };
 
 var Bound = function(block1, block2, type) {
@@ -212,12 +234,11 @@ var Column = function(ctx, x,y,sep) {
 
 
 var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
-    var self = this;
+    var self = new NamedBlock(options, name);
     var height = initialHeight;
     var width = initialWidth;
     var angle = 30;
     var left, top, cx = 0, cy = 0;
-    options = options || {};
     var minsize = options.minsize || 0;
     var maxsize = options.maxsize || Infinity;
     var dep = [];
@@ -227,12 +248,6 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     var frozen = false;
     topleft=  topright = bottomleft = bottomright= {x:0,y:0};
 
-    this.addEventListener = function (eventType, callback, bubble) {
-	if (!eventListeners[eventType]) {
-	    eventListeners[eventType]=[];
-	}
-	eventListeners[eventType].push(callback);
-    }
 
     
     if (options.dep) {
@@ -243,19 +258,16 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     }
 
     var context;
-    var eventListeners = {};
 
-    Object.defineProperty(this, "cx", {"get":function() { return cx;}, "set": function(newX) { cx  = newX; updateCx(); updateLeft()}});
-    Object.defineProperty(this, "cy", {"get":function() { return cy;}, "set": function(newY) { cy = newY; updateCy(); updateTop()}});
-    Object.defineProperty(this, "width", {"get":function() { return width;}, "set": function(newWidth) { updateWidth(newWidth); updateLeft();}});
-    Object.defineProperty(this, "height", {"get":function() { return height;}, "set": function(newHeight) { updateHeight(newHeight); updateTop();}});
+    Object.defineProperty(self, "cx", {"get":function() { return cx;}, "set": function(newX) { cx  = newX; updateCx(); updateLeft()}});
+    Object.defineProperty(self, "cy", {"get":function() { return cy;}, "set": function(newY) { cy = newY; updateCy(); updateTop()}});
+    Object.defineProperty(self, "width", {"get":function() { return width;}, "set": function(newWidth) { updateWidth(newWidth); updateLeft();}});
+    Object.defineProperty(self, "height", {"get":function() { return height;}, "set": function(newHeight) { updateHeight(newHeight); updateTop();}});
 
-    Object.defineProperty(this, "topleft", {"get":function() { return topleft;}, "set": function() { }});
-    Object.defineProperty(this, "topright", {"get":function() { return topright;}, "set": function() { }});
-    Object.defineProperty(this, "bottomleft", {"get":function() { return bottomleft;}, "set": function() { }});
-    Object.defineProperty(this, "bottomright", {"get":function() { return bottomright;}, "set": function() { }});
-
-    this.name = name;
+    Object.defineProperty(self, "topleft", {"get":function() { return topleft;}, "set": function() { }});
+    Object.defineProperty(self, "topright", {"get":function() { return topright;}, "set": function() { }});
+    Object.defineProperty(self, "bottomleft", {"get":function() { return bottomleft;}, "set": function() { }});
+    Object.defineProperty(self, "bottomright", {"get":function() { return bottomright;}, "set": function() { }});
 
     var g = document.createElementNS(svgNS,"g");
     var rect = document.createElementNS(svgNS,"rect");
@@ -282,18 +294,18 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	g.appendChild(widthHandle);	    
     }
 
-    this.width = width;
-    this.height = height;
+    self.width = width;
+    self.height = height;
     var ratio = height/width;
     if (options.fixedRatio) {
 	self.addEventListener("widthchange", function () { self.height = ratio * self.width;}, false );
     }
     depCallback.call(self,dep);
 
-    this.display = function (ctx, x, y) {
+    self.display = function (ctx, x, y) {
 	context =ctx;
-	this.cx = x;
-	this.cy = y;
+	self.cx = x;
+	self.cy = y;
 	if (options.adjustable) {
 	    mouseHandle =  function (e) {
 		e.preventDefault();
@@ -344,7 +356,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	self._displayLinks(ctx);
     }
 
-    this.freeze = function () {
+    self.freeze = function () {
 	if (options.adjustable && !frozen) {
 	    widthHandle.removeEventListener("mousedown", mouseHandle, false);
 	    widthHandle.classList.add("frozen");
@@ -352,7 +364,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	}
     }
 
-    this.unfreeze = function () {
+    self.unfreeze = function () {
 	if (options.adjustable && frozen) {
 	    widthHandle.addEventListener("mousedown", mouseHandle, false);	
 	    widthHandle.classList.remove("frozen");
@@ -360,24 +372,14 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	}
     }
 
-    this._displayLinks = function (ctx) {
+    self._displayLinks = function (ctx) {
 	for (var i = 0 ; i < links.length ; i++) {
 	    links[i].display(ctx);
 	}
     };
 
-    function emit(eventType, value) {
-	var listeners = eventListeners[eventType];
-	if (listeners) {
-	    for (var i = 0; i < listeners.length; i++) {
-		listeners[i]({type:eventType, value:value});
-	    }
-	}
-    }
-
-
-    this.addEventListener("widthchange",updateLeft);
-    this.addEventListener("heightchange",updateTop);
+    self.addEventListener("widthchange",updateLeft);
+    self.addEventListener("heightchange",updateTop);
 
 
     dep.map(function(b) {
@@ -410,7 +412,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 		measure.setAttribute("x2",cx + width/2);
 	    }
 	    measureVal.textContent = Math.floor(width) + "px";
-	    emit("widthchange", width);
+	    self.dispatchEvent({type:"widthchange",value: width});
 	}
     }
     function updateHeight(newHeight) {
@@ -423,21 +425,21 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    if (cy) {
 		title.setAttribute("y", cy - height/2 + 15);
 	    }
-	    emit("heightchange", newHeight);
+	    self.dispatchEvent({type:"heightchange", value:newHeight});
 	}
     }
     function updateCx() {
 	measure.setAttribute("x2",cx + width/2);
 	measureVal.setAttribute("x", cx);
 	title.setAttribute("x", cx);
-	emit("cxchange",cx);
+	self.dispatchEvent({type:"cxchange",value:cx});
     }
     function updateCy() {
 	measure.setAttribute("y1",cy);
 	measure.setAttribute("y2",cy);
 	measureVal.setAttribute("y",cy - 15);
 	title.setAttribute("y", cy - height/2 + 15);
-	emit("cychange",cy);
+	self.dispatchEvent({type:"cychange",value:cy});
     }
 
     function updateLeft() {
@@ -452,7 +454,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    g.setAttribute("transform","translate("+(left + width/2) +",0) skewY(-" + angle +") translate(-" + (left + width / 2) +",0)");
 	    rect.setAttribute("x",left);
 	    measure.setAttribute("x1",left);
-	    emit("leftchange", left);
+	    self.dispatchEvent({type:"leftchange", value:left});
 	}
     }
     function updateTop() {
@@ -465,10 +467,10 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    topright = {x:left + width ,y:top - skew};
 	    bottomright = {x:left + width ,y:top + height - skew};
 	    rect.setAttribute("y",top);
-	    emit("topchange", top);
+	    self.dispatchEvent({type:"topchange", value:top});
 	}
     }
-
+    return self;
 };
 
 var Operation = function (width, height, name, options) {
