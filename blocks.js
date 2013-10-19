@@ -4,7 +4,7 @@ var Block = function (options) {
     var self = this;
     var eventListeners = {};
     var widthInit = false, heightInit = false;
-    var width = 0 , height = 0;
+    var width = 0 , height = 0, cx = 0, cy = 0;
     var minsize = options.minsize || 0;
     var maxsize = options.maxsize || Infinity;
     var ratio;
@@ -12,8 +12,7 @@ var Block = function (options) {
     options = options || {};
 
     // this.width
-    Object.defineProperty(self,
-			  "width", 
+    Object.defineProperty(self, "width", 
 			  {"get":function () { return width;}, 
 			   "set": function (newWidth) {
 			       newWidth = Math.max(minsize,Math.min(maxsize,newWidth));
@@ -28,14 +27,13 @@ var Block = function (options) {
 				   self.dispatchEvent({type:"widthchange",value: width});
 				   if (options.fixedRatio && ratio !== undefined) {
 				       height = ratio * self.width;
-				       self.dispatchEvent({type:"heightchange", value:height});
+				       self.dispatchEvent({type:"heightchange", value: height});
 				   }
 			       }
 			   }});
 
     // this.height
-    Object.defineProperty(self, 
-			  "height", 
+    Object.defineProperty(self, "height", 
 			  {"get":function () { return height;},
 			   "set": function (newHeight) { 
 			       if (!heightInit) {
@@ -50,10 +48,27 @@ var Block = function (options) {
 				       self.width = newHeight / ratio;
 				   } else  {
 				       height = newHeight;
-				       self.dispatchEvent({type:"heightchange", value:newHeight});
+				       self.dispatchEvent({type:"heightchange", value: height});
 				   }
 			       }
 			   }});
+
+    // this.cx
+    Object.defineProperty(self, "cx", 
+			  {"get":function() { return cx;},
+			   "set": function(newX) { 
+			       cx  = newX;
+			       self.dispatchEvent({type:"cxchange", value: cx});
+			   }});
+
+    // this.cy
+    Object.defineProperty(self, "cy", 
+			  {"get":function() { return cy;},
+			   "set": function(newY) { 
+			       cy  = newY;
+			       self.dispatchEvent({type:"cychange", value: cy});
+			   }});
+
 
     this.addEventListener = function (eventType, callback, bubble) {
 	if (!eventListeners[eventType]) {
@@ -307,9 +322,6 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 
     var context;
 
-    Object.defineProperty(self, "cx", {"get":function() { return cx;}, "set": function(newX) { cx  = newX; updateCx(); updateLeft()}});
-    Object.defineProperty(self, "cy", {"get":function() { return cy;}, "set": function(newY) { cy = newY; updateCy(); updateTop()}});
-
     Object.defineProperty(self, "topleft", {"get":function() { return topleft;}, "set": function() { }});
     Object.defineProperty(self, "topright", {"get":function() { return topright;}, "set": function() { }});
     Object.defineProperty(self, "bottomleft", {"get":function() { return bottomleft;}, "set": function() { }});
@@ -421,9 +433,16 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 
     self.addEventListener("widthchange",updateWidth);
     self.addEventListener("widthchange",updateHeight);
+    self.addEventListener("widthchange",updateCx);
 
     self.addEventListener("widthchange",updateLeft);
     self.addEventListener("heightchange",updateTop);
+
+    self.addEventListener("cxchange",updateCx);
+    self.addEventListener("cxchange",updateLeft);
+
+    self.addEventListener("cychange",updateCy);
+    self.addEventListener("cychange",updateTop);
 
 
     dep.map(function(b) {
@@ -445,6 +464,8 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	return (self.width + self.height * 3 / 4) + "," + repeatString("2,2,",self.height / 16) + self.width + "," + repeatString("2,2,",self.height / 16) + (self.width + self.height * 3 / 4);
     }
 
+
+    // TODO: rename (e.g. onWidthChange)
     function updateWidth() {
 	if (self.width !== rect.width.baseVal.value) {
 	    rect.setAttribute("width",self.width);
@@ -457,6 +478,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    measureVal.textContent = Math.floor(self.width) + "px";
 	}
     }
+    // TODO: rename (e.g. onHeightChange)
     function updateHeight() {
 	if (self.height !== rect.height.baseVal.value) {
 	    rect.setAttribute("height",self.height);
@@ -468,18 +490,20 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    }
 	}
     }
+
+    // TODO: rename (e.g. onCxChange)
     function updateCx() {
 	measure.setAttribute("x2",self.cx + self.width/2);
 	measureVal.setAttribute("x", self.cx);
 	title.setAttribute("x", self.cx);
-	self.dispatchEvent({type:"cxchange",value:self.cx});
     }
+
+    // TODO: rename (e.g. onCyChange)
     function updateCy() {
-	measure.setAttribute("y1",cy);
-	measure.setAttribute("y2",cy);
-	measureVal.setAttribute("y",cy - 15);
-	title.setAttribute("y", cy - self.height/2 + 15);
-	self.dispatchEvent({type:"cychange",value:cy});
+	measure.setAttribute("y1", self.cy);
+	measure.setAttribute("y2", self.cy);
+	measureVal.setAttribute("y", self.cy - 15);
+	title.setAttribute("y", self.cy - self.height/2 + 15);
     }
 
     function updateLeft() {
