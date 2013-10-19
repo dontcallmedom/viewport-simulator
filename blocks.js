@@ -322,7 +322,7 @@ var Block = function(initialWidth, initialHeight, name , options) {
 	    widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
 	}
 	if (options.openbottom) {
-	    rect.setAttribute("stroke-dasharray", (width + height) + "," + width);
+	    rect.setAttribute("stroke-dasharray", openbottomstroke());
 	}
 
 	ctx.appendChild(g);
@@ -384,13 +384,19 @@ var Block = function(initialWidth, initialHeight, name , options) {
 	links.push(new Bound(b.block, self, b.type));
     });
 
+    function openbottomstroke() {
+	function repeatString(str, num) {
+	    return new Array( Math.floor(num + 1) ).join( str );
+	}
+	return (width + height * 3 / 4) + "," + repeatString("2,2,",height / 16) + width + "," + repeatString("2,2,",height / 16) + (width + height * 3 / 4);
+    }
 
     function updateWidth(newWidth) {
 	if (newWidth !== rect.width.baseVal.value) {
 	    width = Math.max(minsize,Math.min(maxsize,newWidth));
 	    rect.setAttribute("width",width);
 	    if (options.openbottom) {
-		rect.setAttribute("stroke-dasharray", (width + height) + "," + width);
+		rect.setAttribute("stroke-dasharray", openbottomstroke());
 	    }
 	    if (cx) {
 		measure.setAttribute("x2",cx + width/2);
@@ -404,7 +410,7 @@ var Block = function(initialWidth, initialHeight, name , options) {
 	    height = newHeight;
 	    rect.setAttribute("height",newHeight);
 	    if (options.openbottom) {
-		rect.setAttribute("stroke-dasharray", (width + height) + "," + width);
+		rect.setAttribute("stroke-dasharray", openbottomstroke());
 	    }
 	    if (cy) {
 		title.setAttribute("y", cy - height/2 + 15);
