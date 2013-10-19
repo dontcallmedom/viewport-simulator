@@ -1,16 +1,16 @@
 
-var svg = document.querySelector("svg");
+var svg = document.querySelector("#diagram");
 
-var visibleArea = new Block(320,568, "Visible area", {adjustable:true, fixedRatio: true, minsize: 320 / 5 , maxsize: 320/0.25 });
-var visibleArea2 = new Block(320,568, "Visible area", {dep:[{block:visibleArea, type:"mirror"}], callback: function(blocks) { this.width=blocks[0].block.width; this.height=blocks[0].block.height;}});
-var screen = new Block(640, 1136, "Mobile screen");
+var visibleArea = new MeasuredBlock({adjustable:true, fixedRatio: true, minsize: 320 / 5 , maxsize: 320/0.25 }, "Visible area", 320,568);
+var visibleArea2 = new MeasuredBlock({dep:[{block:visibleArea, type:"mirror"}], callback: function(blocks) { this.width=blocks[0].block.width; this.height=blocks[0].block.height;}}, "Visible area", 320,568);
+var screen = new MeasuredBlock({}, "Mobile screen",640, 1136);
 
-var content = new Block(400,568,"Minimum rendered content area", {adjustable:true});
-var viewport = new Block(320, 568, "viewport", {adjustable:true});
+var content = new MeasuredBlock({openbottom: true, adjustable:true},"Minimum rendered content area", 400,568);
+var viewport = new MeasuredBlock({adjustable:true}, "viewport", 320, 568);
 
 var maxOperation = new Operation(0,0,"max", {dep:[{block:visibleArea2,type:"input"}, {block:viewport, type:"input"}, {block:content, type:"input"}], callback:function(blocks) { this.width = Math.max.apply(null,blocks.map(function(b) { return b.block.width;})); this.height = Math.max.apply(null,blocks.map(function(b) { return b.block.height;}))}});
 
-var layoutCanvas = new Block(0,0,"Layout canvas", {dep: [{block:maxOperation,type:"input"},], callback:function(blocks) { this.width = blocks[0].block.width; this.height = blocks[0].block.height;}});
+var layoutCanvas = new MeasuredBlock({openbottom: true, dep: [{block:maxOperation,type:"input"},], callback:function(blocks) { this.width = blocks[0].block.width; this.height = blocks[0].block.height;}},"Layout canvas", 0,0);
 
 var z = new Bound(visibleArea,screen,"zoom");
 var p = new Bound(visibleArea,layoutCanvas,"project");
@@ -37,6 +37,7 @@ function updateViewport() {
 	}
 	if (document.getElementById('hasScale').checked) { 
 	    values.push("initial-scale=" + document.getElementById('scale').value);
+	    visibleArea.width = 320 / document.getElementById('scale').value;
 	}
 
 	document.getElementById('meta').value='<meta name="viewport" content="' + values.join(',') + '">'; 
@@ -47,16 +48,17 @@ function updateViewport() {
 }
 
 function updateVisibleArea() {
-    visibleArea.width = 320 ;
     if (document.getElementById('hasScale').checked) {
 	visibleArea.width = visibleArea.width / document.getElementById('scale').value;
+    } else {
+	visibleArea.width = layoutCanvas.width ;
     }
 }
 
 updateViewport();
 updateVisibleArea();
 document.getElementById('widthvalue').value = document.getElementById('width').value = viewport.width ;
-document.getElementById('scalevalue').value = document.getElementById('scale').value = 320 / visibleArea.width ;
+document.getElementById('scalevalue').value = document.getElementById('scale').value;
 document.getElementById('contentvalue').value = document.getElementById('content').value = content.width ;
 document.getElementById('hasWidth').addEventListener("change", function () {
     updateViewport();
@@ -92,7 +94,9 @@ document.getElementById('scale').addEventListener("change", function () {
     document.getElementById('scalevalue').value = this.value;
 });
 visibleArea.addEventListener('widthchange', function () {
-    document.getElementById('scalevalue').value = document.getElementById('scale').value =  320 / visibleArea.width;
+    if (document.getElementById('hasScale').checked) {
+	document.getElementById('scalevalue').value = document.getElementById('scale').value =  320 / visibleArea.width;
+    }
 });
 document.getElementById('content').addEventListener('change', function () {
     document.getElementById('contentvalue').value = this.value;

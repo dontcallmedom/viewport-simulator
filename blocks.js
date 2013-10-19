@@ -1,5 +1,13 @@
 var svgNS="http://www.w3.org/2000/svg";
 
+var Block = function (options) {
+
+};
+
+var NamedBlock = function (options, name) {
+
+};
+
 var Bound = function(block1, block2, type) {
     this.block1 = block1;
     this.block2 = block2;
@@ -203,7 +211,7 @@ var Column = function(ctx, x,y,sep) {
 };
 
 
-var Block = function(initialWidth, initialHeight, name , options) {
+var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     var self = this;
     var height = initialHeight;
     var width = initialWidth;
@@ -465,7 +473,7 @@ var Block = function(initialWidth, initialHeight, name , options) {
 
 var Operation = function (width, height, name, options) {
     var virtual = { appendChild:function(){}};
-    var self = new Block(0, 0, name, options);
+    var self = new MeasuredBlock( options, name,0, 0);
     var parentDisplay = self.display;
     self.display = function(ctx, x, y) {
 	self.cx = x;
