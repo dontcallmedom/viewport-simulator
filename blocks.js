@@ -3,8 +3,57 @@ var svgNS="http://www.w3.org/2000/svg";
 var Block = function (options) {
     var self = this;
     var eventListeners = {};
+    var widthInit = false, heightInit = false;
+    var width = 0 , height = 0;
+    var minsize = options.minsize || 0;
+    var maxsize = options.maxsize || Infinity;
+    var ratio;
 
     options = options || {};
+
+    // this.width
+    Object.defineProperty(self,
+			  "width", 
+			  {"get":function () { return width;}, 
+			   "set": function (newWidth) {
+			       newWidth = Math.max(minsize,Math.min(maxsize,newWidth));
+			       if (!widthInit) {
+				   if (heightInit && options.fixedRatio) {
+				       ratio = self.height / newWidth;
+				   }
+				   widthInit = true;
+			       }
+			       if (newWidth !== width) {
+				   width = newWidth;
+				   self.dispatchEvent({type:"widthchange",value: width});
+				   if (options.fixedRatio && ratio !== undefined) {
+				       height = ratio * self.width;
+				       self.dispatchEvent({type:"heightchange", value:height});
+				   }
+			       }
+			   }});
+
+    // this.height
+    Object.defineProperty(self, 
+			  "height", 
+			  {"get":function () { return height;},
+			   "set": function (newHeight) { 
+			       if (!heightInit) {
+				   if (widthInit && options.fixedRatio) {
+				       ratio = newHeight / self.width;
+				   }
+				   heightInit = true;
+			       }
+			       if (newHeight !== height) {
+				   // With fixed ratio, we give precedence to the width setter
+				   if (options.fixedRatio & ratio !== undefined) {
+				       self.width = newHeight / ratio;
+				   } else  {
+				       height = newHeight;
+				       self.dispatchEvent({type:"heightchange", value:newHeight});
+				   }
+			       }
+			   }});
 
     this.addEventListener = function (eventType, callback, bubble) {
 	if (!eventListeners[eventType]) {
@@ -20,6 +69,9 @@ var Block = function (options) {
 		listeners[i]({type:event.type, value:event.value});
 	    }
 	}
+    }
+
+    function setWidth(newWidth) {
     }
 
 };
@@ -235,12 +287,8 @@ var Column = function(ctx, x,y,sep) {
 
 var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     var self = new NamedBlock(options, name);
-    var height = initialHeight;
-    var width = initialWidth;
     var angle = 30;
     var left, top, cx = 0, cy = 0;
-    var minsize = options.minsize || 0;
-    var maxsize = options.maxsize || Infinity;
     var dep = [];
     var links = [];
     var depCallback = function () {};
@@ -261,8 +309,6 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 
     Object.defineProperty(self, "cx", {"get":function() { return cx;}, "set": function(newX) { cx  = newX; updateCx(); updateLeft()}});
     Object.defineProperty(self, "cy", {"get":function() { return cy;}, "set": function(newY) { cy = newY; updateCy(); updateTop()}});
-    Object.defineProperty(self, "width", {"get":function() { return width;}, "set": function(newWidth) { updateWidth(newWidth); updateLeft();}});
-    Object.defineProperty(self, "height", {"get":function() { return height;}, "set": function(newHeight) { updateHeight(newHeight); updateTop();}});
 
     Object.defineProperty(self, "topleft", {"get":function() { return topleft;}, "set": function() { }});
     Object.defineProperty(self, "topright", {"get":function() { return topright;}, "set": function() { }});
@@ -294,12 +340,9 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	g.appendChild(widthHandle);	    
     }
 
-    self.width = width;
-    self.height = height;
-    var ratio = height/width;
-    if (options.fixedRatio) {
-	self.addEventListener("widthchange", function () { self.height = ratio * self.width;}, false );
-    }
+    self.width = initialWidth;
+    self.height = initialHeight;
+
     depCallback.call(self,dep);
 
     self.display = function (ctx, x, y) {
@@ -314,9 +357,7 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 			      e.mozMovementX    ||
 			      e.webkitMovementX ||
 			      0)  * ctx.viewBox.baseVal.width / ctx.clientWidth / Math.tan(angle * Math.PI / 180);
-		    if (self.width + dx > minsize && self.width + dx < maxsize) {
-			self.width += dx;
-		    }
+		    self.width += dx;
 		    document.querySelector("body").classList.add("resize");
 		    e.preventDefault();
 		    return false;
@@ -337,8 +378,8 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	    widthHandle.addEventListener("mousedown", mouseHandle, false);	
 
 
-	    var posX = x + width/2;
-	    var posY = y - height / 4;
+	    var posX = x + self.width/2;
+	    var posY = y - self.height / 4;
 	    widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
 	}
 	if (options.openbottom) {
@@ -348,8 +389,8 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	ctx.appendChild(g);
 	if (options.adjustable) {
 	    self.addEventListener("widthchange", function(newWidth) {
-		var posX = cx + width/2;
-		var posY = cy - height/4;
+		var posX = cx + self.width/2;
+		var posY = cy - self.height/4;
 		widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
 	    });
 	}
@@ -378,6 +419,9 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	}
     };
 
+    self.addEventListener("widthchange",updateWidth);
+    self.addEventListener("widthchange",updateHeight);
+
     self.addEventListener("widthchange",updateLeft);
     self.addEventListener("heightchange",updateTop);
 
@@ -398,74 +442,70 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	function repeatString(str, num) {
 	    return new Array( Math.floor(num + 1) ).join( str );
 	}
-	return (width + height * 3 / 4) + "," + repeatString("2,2,",height / 16) + width + "," + repeatString("2,2,",height / 16) + (width + height * 3 / 4);
+	return (self.width + self.height * 3 / 4) + "," + repeatString("2,2,",self.height / 16) + self.width + "," + repeatString("2,2,",self.height / 16) + (self.width + self.height * 3 / 4);
     }
 
-    function updateWidth(newWidth) {
-	if (newWidth !== rect.width.baseVal.value) {
-	    width = Math.max(minsize,Math.min(maxsize,newWidth));
-	    rect.setAttribute("width",width);
+    function updateWidth() {
+	if (self.width !== rect.width.baseVal.value) {
+	    rect.setAttribute("width",self.width);
 	    if (options.openbottom) {
 		rect.setAttribute("stroke-dasharray", openbottomstroke());
 	    }
-	    if (cx) {
-		measure.setAttribute("x2",cx + width/2);
+	    if (self.cx) {
+		measure.setAttribute("x2",self.cx + self.width/2);
 	    }
-	    measureVal.textContent = Math.floor(width) + "px";
-	    self.dispatchEvent({type:"widthchange",value: width});
+	    measureVal.textContent = Math.floor(self.width) + "px";
 	}
     }
-    function updateHeight(newHeight) {
-	if (newHeight !== rect.height.baseVal.value) {
-	    height = newHeight;
-	    rect.setAttribute("height",newHeight);
+    function updateHeight() {
+	if (self.height !== rect.height.baseVal.value) {
+	    rect.setAttribute("height",self.height);
 	    if (options.openbottom) {
 		rect.setAttribute("stroke-dasharray", openbottomstroke());
 	    }
-	    if (cy) {
-		title.setAttribute("y", cy - height/2 + 15);
+	    if (self.cy) {
+		title.setAttribute("y", self.cy - self.height/2 + 15);
 	    }
-	    self.dispatchEvent({type:"heightchange", value:newHeight});
 	}
     }
     function updateCx() {
-	measure.setAttribute("x2",cx + width/2);
-	measureVal.setAttribute("x", cx);
-	title.setAttribute("x", cx);
-	self.dispatchEvent({type:"cxchange",value:cx});
+	measure.setAttribute("x2",self.cx + self.width/2);
+	measureVal.setAttribute("x", self.cx);
+	title.setAttribute("x", self.cx);
+	self.dispatchEvent({type:"cxchange",value:self.cx});
     }
     function updateCy() {
 	measure.setAttribute("y1",cy);
 	measure.setAttribute("y2",cy);
 	measureVal.setAttribute("y",cy - 15);
-	title.setAttribute("y", cy - height/2 + 15);
+	title.setAttribute("y", cy - self.height/2 + 15);
 	self.dispatchEvent({type:"cychange",value:cy});
     }
 
     function updateLeft() {
-	var newLeft = cx - width/2;
+	var newLeft = self.cx - self.width/2;
 	if (newLeft !== left) {
 	    left = newLeft ;
-	    var skew = width * Math.tan(angle * Math.PI/180) / 2;
+	    var skew = self.width * Math.tan(angle * Math.PI/180) / 2;
 	    topleft = {x:left,y:top + skew};
-	    bottomleft = {x:left,y:top + height + skew};
-	    topright = {x:left + width ,y:top - skew};
-	    bottomright = {x:left + width ,y:top + height - skew};
-	    g.setAttribute("transform","translate("+(left + width/2) +",0) skewY(-" + angle +") translate(-" + (left + width / 2) +",0)");
+	    bottomleft = {x:left,y:top + self.height + skew};
+	    topright = {x:left + self.width ,y:top - skew};
+	    bottomright = {x:left + self.width ,y:top + self.height - skew};
+	    g.setAttribute("transform","translate("+(left + self.width/2) +",0) skewY(-" + angle +") translate(-" + (left + self.width / 2) +",0)");
 	    rect.setAttribute("x",left);
 	    measure.setAttribute("x1",left);
 	    self.dispatchEvent({type:"leftchange", value:left});
 	}
     }
     function updateTop() {
-	var newTop = cy - height/2;
+	var newTop = self.cy - self.height/2;
 	if (newTop !== top) {
-	    var skew = width * Math.tan(angle * Math.PI/180) / 2;
+	    var skew = self.width * Math.tan(angle * Math.PI/180) / 2;
 	    top = newTop;
 	    topleft = {x:left,y:top + skew};
-	    bottomleft = {x:left,y:top + height + skew};
-	    topright = {x:left + width ,y:top - skew};
-	    bottomright = {x:left + width ,y:top + height - skew};
+	    bottomleft = {x:left,y:top + self.height + skew};
+	    topright = {x:left + self.width ,y:top - skew};
+	    bottomright = {x:left + self.width ,y:top + self.height - skew};
 	    rect.setAttribute("y",top);
 	    self.dispatchEvent({type:"topchange", value:top});
 	}
