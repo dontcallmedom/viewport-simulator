@@ -5,7 +5,7 @@
 <style>
 label.switch { float: left; width:8em;}
 svg { margin-top:1em; margin-left:1em;}
-rect { stroke:black; stroke-width:1px; fill:#fafafa; opacity:0.5;pointer-events:none;}
+rect { stroke:black; stroke-width:3px; fill:#fafafa; opacity:0.5;pointer-events:none}
 text { text-anchor:middle; font-size:4vh}
 line.measure {  stroke-dasharray:1, 2; stroke-width:1px; stroke:blue; marker-start:url(#Arrow1Lstart); marker-end:url(#Arrow1Lend);}
 line.input { stroke-width:1px; stroke:orange; marker-end:url(#Arrow1Lend);}
@@ -18,19 +18,87 @@ path.resize { fill:blue;}
 polygon.projected { fill: #eee; opacity:0.5; pointer-events:none;}
 path.frozen { cursor: none; fill: gray;}
 #meta { float: right;}
+figcaption { text-align:center;}
+#contentchoice p, #contentchoice figure {  margin:0 auto; width:50%; text-align:center;}
+#contentchoice rect { opacity:1;}
+#contentchoice svg { margin:0;}
+#contentchoice { position: relative; padding:0;}
+#contentchoice div { width:33% ;}
+#contentchoice div + div {position: absolute; top: 1.2em; left: 33%;}
+#contentchoice div + div + div { left: 66%;}
 </style>
 </head>
 <body>
+<fieldset><legend>Device / UA specific values</legend>
+<dl>
+<dt>Screen size</dt>
+<dd><output id="screenwidth">640</output> x <output id="screenheight">1136</output></dd>
+<dt>Default <code>device-width</code> without <code>&lt;meta viewport&gt;</code></dt>
+<dd>980</dd>
+<dt>User-Agent fixed zoom<dt>
+<dd><output id="uazoom">2x</output></dd>
+<dt><code>device-width</code> x <code>device-height</code></dt>
+<dd><output id="dwidth">320</output> x <output id="dheight">568</output></dd>
+<dt>User zoom range</dt>
+<dd><output id="minzoom">0.25</output> - <output id="maxzoom">5</output></dd>
+</dl>
+</fieldset>
+<fieldset id="contentchoice"><legend>Content</legend>
+<div>
+<p><input name='contentchoice' id='fixedcontent' type='radio' checked></p>
+<label for='fixedcontent'><figure><figcaption>Fixed width content</label></figcaption>
+<svg id="fixed" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" height="200">
+<rect  x="0" y="0" width="397" height="597"/>
+<rect x="2" y="10" width="395" height="100" style="fill:url(#aigrd1)"/>
+</svg></figure></label>
+<p><label><input type=range min=40 max=2000 step=10 id=content value=400/></label><output id=contentvalue></output>px</p>
+</div>
+<div>
+<p><input name='contentchoice' id='liquidcontent' type='radio'></p>
+<label for='liquidcontent'>
+<figure><figcaption>Liquid content</figcaption>
+<svg id="liquid" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" height="200">
+<rect  x="0" y="0" width="397" height="597"/>
+<rect x="2" y="10" width="28%" height="100" style="fill:url(#aigrd1)"/>
+<rect x="33%" y="10" width="28%" height="100" style="fill:url(#aigrd1)"/>
+<rect x="66%" y="10" width="28%" height="100" style="fill:url(#aigrd1)"/>
+
+<rect x="2" y="140" width="28%" height="100" style="fill:url(#aigrd1)"/>
+<rect x="33%" y="140" width="28%" height="100" style="fill:url(#aigrd1)"/>
+<rect x="66%" y="140" width="28%" height="100" style="fill:url(#aigrd1)"/>
+
+
+</svg></figure></label>
+
+</div>
+<div>
+<p><input name='contentchoice' id='elasticcontent' type='radio'></p>
+<label for='elasticcontent'>
+<figure><figcaption>Elastic content</figcaption>
+<svg id="elastic" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 600" height="200">
+<rect  x="0" y="0" width="397" height="597"/>
+<rect x="2" y="10" width="100%" height="100" style="fill:url(#aigrd1)"/>
+<path stroke="black" stroke-width="5" d="M0,50 l1,0" style='marker-start:url(#Arrow1Lstart)'/>
+<path stroke="black" stroke-width="5" d="M400,50 l1,0" style='marker-start:url(#Arrow1Lend)'/>
+</svg></figure></label>
+
+</div>
+</fieldset>
 <fieldset><legend><code>meta name='viewport'</code> content</legend>
 <pre><code><output id='meta'></output></code></pre>
 <label class=switch><input type='checkbox' id='hasWidth'> width:</label><label><input type='radio' id='devicewidth' checked disabled name='widthopt'> device-width</label> OR <label><input disabled type='radio' name='widthopt' id='numericwidth'> numeric value: <input type=range min=0 step=10 max=2000 id='width' value=320 disabled/></label><output id='widthvalue'></output><br/>
 <label class=switch><input type='checkbox' id='hasScale'> initial-scale:</label><label><input type=range min=0.25 max=5 step=0.25 id='scale' value=1 disabled/></label><output id='scalevalue'></output<br/>
 </fieldset>
-<fieldset><legend>Intrinsic dimensions of content</legend>
-<label><input type=range min=40 max=2000 step=10 id=content value=400/></label><output id=contentvalue></output>
-</fieldset>
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2600 1280" preserveAspectRatio='xMinYMin meet'>
+<svg id="diagram" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2600 1280" preserveAspectRatio='xMinYMin meet'>
 <defs>
+  <linearGradient id="aigrd1" x1="0" y1="100%" x2="100%" y2="100%">
+    <stop  offset="0" style="stop-color:#FB0F0C"/>
+    <stop  offset="0.2" style="stop-color:#F7F619"/>
+    <stop  offset="0.4" style="stop-color:#168638"/>
+    <stop  offset="0.6" style="stop-color:#1A9ABF"/>
+    <stop  offset="0.8" style="stop-color:#19037A"/>
+    <stop  offset="1" style="stop-color:#EF097C"/>
+  </linearGradient>
     <marker
        inkscape:stockid="Arrow1Lend"
        orient="auto"
