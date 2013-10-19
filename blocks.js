@@ -1,5 +1,13 @@
 var svgNS="http://www.w3.org/2000/svg";
 
+var Point = function(x,y) {
+    this.x = x;
+    this.y = y;
+    this.translate = function (dx,dy) {
+	return new Point(x+dx,y+dy);
+    };
+};
+
 var Block = function (options) {
     var self = this;
     var eventListeners = {};
@@ -10,6 +18,9 @@ var Block = function (options) {
     var ratio;
 
     options = options || {};
+    options.angle = options.angle || 0;
+
+    var deg = Math.PI/180;
 
     // this.width
     Object.defineProperty(self, "width", 
@@ -69,6 +80,26 @@ var Block = function (options) {
 			       self.dispatchEvent({type:"cychange", value: cy});
 			   }});
 
+    // this.topleft
+    Object.defineProperty(self, "topleft",
+			   {"get": function() { return new Point(self.cx - self.width / 2, self.cy - self.height / 2 + self.width * Math.tan(options.angle * deg) / 2);},
+			    "set": function() {}
+			    });
+
+    // this.topright
+    Object.defineProperty(self, "topright", 
+			  {"get":function() { return self.topleft.translate(self.width, - self.width*Math.tan(options.angle * deg));},
+			   "set": function() { }});
+
+    // this.bottomright
+    Object.defineProperty(self, "bottomright", 
+			  {"get":function() { return self.topright.translate(0, self.height);},
+			   "set": function() { }});
+
+    // this.bottomleft
+    Object.defineProperty(self, "bottomleft", 
+			  {"get":function() { return self.topleft.translate(0, self.height);},
+			   "set": function() { }});
 
     this.addEventListener = function (eventType, callback, bubble) {
 	if (!eventListeners[eventType]) {
@@ -301,16 +332,16 @@ var Column = function(ctx, x,y,sep) {
 
 
 var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
+    options = options || {};
+    options.angle = 30;
     var self = new NamedBlock(options, name);
-    var angle = 30;
+    var angle = options.angle;
     var left, top, cx = 0, cy = 0;
     var dep = [];
     var links = [];
     var depCallback = function () {};
     var topleft, topright, bottomleft, bottomright; 
     var frozen = false;
-    topleft=  topright = bottomleft = bottomright= {x:0,y:0};
-
 
     
     if (options.dep) {
@@ -321,11 +352,6 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
     }
 
     var context;
-
-    Object.defineProperty(self, "topleft", {"get":function() { return topleft;}, "set": function() { }});
-    Object.defineProperty(self, "topright", {"get":function() { return topright;}, "set": function() { }});
-    Object.defineProperty(self, "bottomleft", {"get":function() { return bottomleft;}, "set": function() { }});
-    Object.defineProperty(self, "bottomright", {"get":function() { return bottomright;}, "set": function() { }});
 
     var g = document.createElementNS(svgNS,"g");
     var rect = document.createElementNS(svgNS,"rect");
@@ -510,11 +536,6 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	var newLeft = self.cx - self.width/2;
 	if (newLeft !== left) {
 	    left = newLeft ;
-	    var skew = self.width * Math.tan(angle * Math.PI/180) / 2;
-	    topleft = {x:left,y:top + skew};
-	    bottomleft = {x:left,y:top + self.height + skew};
-	    topright = {x:left + self.width ,y:top - skew};
-	    bottomright = {x:left + self.width ,y:top + self.height - skew};
 	    g.setAttribute("transform","translate("+(left + self.width/2) +",0) skewY(-" + angle +") translate(-" + (left + self.width / 2) +",0)");
 	    rect.setAttribute("x",left);
 	    measure.setAttribute("x1",left);
@@ -526,10 +547,6 @@ var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	if (newTop !== top) {
 	    var skew = self.width * Math.tan(angle * Math.PI/180) / 2;
 	    top = newTop;
-	    topleft = {x:left,y:top + skew};
-	    bottomleft = {x:left,y:top + self.height + skew};
-	    topright = {x:left + self.width ,y:top - skew};
-	    bottomright = {x:left + self.width ,y:top + self.height - skew};
 	    rect.setAttribute("y",top);
 	    self.dispatchEvent({type:"topchange", value:top});
 	}
