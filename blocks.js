@@ -1,4 +1,6 @@
 (function (global) {
+    "use strict";
+
     // shortcut
     function svgEl(el) {
 	return document.createElementNS("http://www.w3.org/2000/svg", el);
@@ -12,9 +14,137 @@
 	};
     };
 
-    var Block = function (options) {
-	var self = this;
+    var BaseObject = function () {
 	var eventListeners = {};
+
+	if (BaseObject.topId === undefined) {
+	    BaseObject.topId = 0;
+	}
+
+	this.id = "b" + BaseObject.topId++;
+
+	this.addEventListener = function (eventType, callback, bubble) {
+	    if (!eventListeners[eventType]) {
+		eventListeners[eventType]=[];
+	    }
+	    eventListeners[eventType].push(callback);
+	};
+
+	this.dispatchEvent = function (event) {
+	    var listeners = eventListeners[event.type];
+	    if (listeners) {
+		for (var i = 0; i < listeners.length; i++) {
+		    listeners[i].bind(this)({type:event.type, value:event.value});
+		}
+	    }
+	};
+
+	this.triggerEvent = function (eventtype) {
+	    var prop = eventtype.replace(/change/,"");
+	    if (this[prop]) {
+		this.dispatchEvent({type:eventtype, value: this[prop]});
+	    }
+	}
+
+	this.refresh = function () {
+	    var self = this;
+	    Object.keys(eventListeners).forEach(function (type) {
+		self.triggerEvent(type);
+	    });
+	};
+
+    };
+
+
+    // A tree whose nodes are individual block or groups of blocks (the latter are necessarily leaves)
+    var Diagram = function (blockOrBlocks, root) {
+	var blocks = (Array.isArray(blockOrBlocks) ? blockOrBlocks : [blockOrBlocks]);
+	var self = new BaseObject();
+	root = root || self;
+	var links = [];
+	var sepx = 100; // make it configurable
+	var sepy = 200;
+	var descendants = blocks.map(function(b) { return b.id;});
+	var acceptChild = !Array.isArray(blockOrBlocks);
+
+	self.addEventListener("newchild", function (b) { descendants.push(b.id);});
+
+	self.hasDescendant = function (block2) {
+	    return descendants.indexOf(block2.id) !== -1;
+	}
+
+	function addChild(blockOrBlocks2) {	    	   
+	    if (!acceptChild) {
+		throw new Error("Trying to add a child to a node that does not accept it");
+	    }
+	    var blocks2 = (Array.isArray(blockOrBlocks2) ? blockOrBlocks2 : [blockOrBlocks2]);
+	    blocks2.forEach(function (block2) {
+		if (root.hasDescendant(block2)) {
+		    throw new Error("Block " + block2.id + " already in Diagram, can’t add it again");
+		}
+		descendants.push(block2.id);
+		self.dispatchEvent("newchild", block2);
+	    });
+	    var child = new Diagram(blockOrBlocks2, root);
+	    child.addEventListener("newchild", function (b) { descendants.push(b.id);});
+	    return child;
+	}
+
+	function addLink(block2, dep) {
+	    var blocks2 = (Array.isArray(block2) ? block2 : [block2]);
+	    if (!acceptChild) {
+		throw new Error("Trying to add a child to a node that does not accept it");
+	    }
+	    var child = addChild(blocks2);
+	    var edge = new dep(blocks[0], blocks2);
+	    links.push({edge: edge, child: child});
+	    return diagram;
+	}
+	
+	self.isZoomOf = function (block2) {
+	    return addLink(block2, ZoomDependency);
+	};
+
+	self.isExtractionOf = function (block2) {
+	    return addLink(block2, ExtractionDependency);
+	};
+
+	// no return, this is necessarily a leave
+	self.extendsToWidthOf = function (blocks2) {
+	    var maxAmongst = function (i) {
+		if (!maxAmongst.values) {
+		    maxAmongst.values = [];
+		}
+		maxAmongst.values[i] = 0;
+		return function (e) { 
+		    maxAmongst.values[i] = e.value;
+		    this.width = Math.max.apply({}, maxAmongst.values);
+		};
+	    };
+	    
+	    var ExtendsToWidthOf = function (b, c) {
+		return new CustomDependency(b, c, "Max", [{widthchange: maxAmongst(0)}, {widthchange: maxAmongst(1)}, {widthchange: maxAmongst(2), heightchange: function (e) { this.height = e.value;}}]);
+	    };
+
+	    return addLink(blocks2, ExtendsToWidthOf);
+	};
+
+	self.display = function (ctx, x, y) {
+	    blocks.forEach(function (block, i) {
+		block.display(ctx, x, y + (i - (blocks.length - 1)/2)*sepy);
+	    });
+	    links.forEach(function (l) {
+		l.edge.display(ctx, x+sepx/2, y);
+		l.child.display(ctx, x+sepx, y);
+	    });
+	    blocks.forEach(function (b) { b.refresh();});
+
+	};
+	return self;
+    };
+
+    var Block = function (options) {
+	var self = new BaseObject();
 	var widthInit = false, heightInit = false;
 	var width = 0 , height = 0, cx = 0, cy = 0;
 	var minsize = options.minsize || 0;
@@ -26,7 +156,7 @@
 
 	var deg = Math.PI/180;
 
-	// this.width
+	// self.width
 	Object.defineProperty(self, "width", 
 			      {"get":function () { return width;}, 
 			       "set": function (newWidth) {
@@ -47,13 +177,14 @@
 				   }
 			       }});
 
-	// this.height
+	// self.height
 	Object.defineProperty(self, "height", 
 			      {"get":function () { return height;},
 			       "set": function (newHeight) { 
 				   if (!heightInit) {
-				       if (widthInit && options.fixedRatio) {
+				       if (options.fixedRatio && widthInit) {
 					   ratio = newHeight / self.width;
+					   height = newHeight;
 				       }
 				       heightInit = true;
 				   }
@@ -69,7 +200,7 @@
 				   }
 			       }});
 
-	// this.cx
+	// self.cx
 	Object.defineProperty(self, "cx", 
 			      {"get":function() { return cx;},
 			       "set": function(newX) { 
@@ -77,7 +208,7 @@
 				   self.triggerEvent("cxchange");
 			       }});
 
-	// this.cy
+	// self.cy
 	Object.defineProperty(self, "cy", 
 			      {"get":function() { return cy;},
 			       "set": function(newY) { 
@@ -85,55 +216,39 @@
 				   self.triggerEvent("cychange");
 			       }});
 
-	// this.topleft
+	// self.topleft
 	Object.defineProperty(self, "topleft",
 			      {"get": function() { return new Point(self.cx - self.width / 2, self.cy - self.height / 2 + self.width * Math.tan(options.angle * deg) / 2);},
 			       "set": function() {}
 			      });
 
-	// this.topright
+	// self.topright
 	Object.defineProperty(self, "topright", 
 			      {"get":function() { return self.topleft.translate(self.width, - self.width*Math.tan(options.angle * deg));},
 			       "set": function() { }});
 
-	// this.bottomright
+	// self.bottomright
 	Object.defineProperty(self, "bottomright", 
 			      {"get":function() { return self.topright.translate(0, self.height);},
 			       "set": function() { }});
 
-	// this.bottomleft
+	// self.bottomleft
 	Object.defineProperty(self, "bottomleft", 
 			      {"get":function() { return self.topleft.translate(0, self.height);},
 			       "set": function() { }});
 
-	this.addEventListener = function (eventType, callback, bubble) {
-	    if (!eventListeners[eventType]) {
-		eventListeners[eventType]=[];
-	    }
-	    eventListeners[eventType].push(callback);
+
+	self.mirror = function () {
+	    var block = Object.create(Object.getPrototypeOf(self));
+	    var mirror = new MirrorDependency(self, [block]);
+	    return block;
 	};
 
-	this.dispatchEvent = function (event) {
-	    var listeners = eventListeners[event.type];
-	    if (listeners) {
-		for (var i = 0; i < listeners.length; i++) {
-		    listeners[i].bind(this)({type:event.type, value:event.value});
-		}
-	    }
-	};
-
-	this.triggerEvent = function (eventtype) {
-	    var prop = eventtype.replace(/change/,"");
-	    if (self[prop]) {
-		self.dispatchEvent({type:eventtype, value: self[prop]});
-	    }
-	}
-
-	this.display = function (ctx, x, y) {
+	self.display = function (ctx, x, y) {
 	    self.cx = x;
 	    self.cy = y;
 	};
-
+	return self;
     };
 
     var NamedBlock = function (options, name) {
@@ -199,6 +314,7 @@
 	    area.setAttribute("points","0,0 0,0 0,0 0,0");
 	    return area;
 	});
+
 
 	self.display = function(ctx, x, y) {
 	    blocks.forEach(function (block, i) {
@@ -316,108 +432,16 @@
 	return self;
     };
 
-    var LineOfBlocks = function(ctx, x,y, sep) {
-	var self = this;
-	self.x = x;
-	self.y = y;
-	self.sep = sep;
-	var blocks = [];
-	
-	// readonly blocks property
-	Object.defineProperty(this,"blocks", {"get":function() { return blocks;}, "set": function(b) {}});
-
-
-	this.display = function () {};
-
-	this._subscribeBlockEvents = function (b) {
-	};
-
-	this._positionBlock = function (b) {
-	    return {x:0,y:0};
-	};
-
-	this.addEventListener = function () {
-	};
-
-	this.addBlock = function(b) {
-	    this.blocks.push(b);
-	    var pos = self._positionBlock(self.blocks.length - 2);
-	    b.display(ctx, pos.x, pos.y);
-	    self._subscribeBlockEvents(b);
-	    return self;
-	};
-
-	this._redisplayAfter = function (b) {
-	    return;
-	    var found = false;
-	    var prevBlock;
-	    for (var i = 0; i<self.blocks.length;i++) {
-		var pos = self._positionBlock(i);
-		if (found) {
-		    self.blocks[i].display(ctx, pos.x, pos.y)
-		}
-		if (self.blocks[i]===b) {
-		    found = true;
-		}
-	    }
-	}
-
-    }
-
-    var Row = function(ctx, x,y,sep) {
-	var self = new LineOfBlocks(ctx, x,y,sep);
-
-	self._positionBlock = function (i) {
-	    if (self.blocks.length === 1) {
-		return {x:x + self.blocks[0].width / 2,y:y};
-	    } else {
-		var rightMostBlock = self.blocks[i];
-		return {x:rightMostBlock.cx + rightMostBlock.width / 2 + sep,y:y};
-	    }
-	};
-
-	self._subscribeBlockEvents = function (b) {
-	    b.addEventListener("widthchange", function() { self._redisplayAfter(b);});
-	    b.addEventListener("leftchange", function() { self._redisplayAfter(b);});
-	};
-
-	self.addColumn = function(dy, sep) {
-	    var pos = self._positionBlock(self.blocks.length-1);
-	    var col = new Column(ctx, pos.x, pos.y + dy, sep);
-	    self.addBlock(col);
-	    return col;
-	}
-
-	return self;
-    };
-
-    var Column = function(ctx, x,y,sep) {
-	var self = new LineOfBlocks(ctx, x,y,sep);
-
-	self._positionBlock = function (i) {
-	    if (self.blocks.length === 1) {
-		return {x:x,y:y + self.blocks[0].height / 2};
-	    } else {
-		var bottomMostBlock = self.blocks[i];
-		return {x:x,y:bottomMostBlock.cy + bottomMostBlock.height / 2 + sep};
-	    }
-	};
-
-	self._subscribeBlockEvents = function (b) {
-	    b.addEventListener("heightchange", function() { self._redisplayAfter(b);});
-	    b.addEventListener("topchange", function() { self._redisplayAfter(b);});
-	};
-
-
-	return self;
-    };
-
 
     var MeasuredBlock = function(options, name, initialWidth, initialHeight) {
 	options = options || {};
 	options.angle = 30;
 	var self = new NamedBlock(options, name);
 	var left, top;
+
+	Object.defineProperty(self, "left", {"get":function () { return left;}, "set": function () {}});
+	Object.defineProperty(self, "top", {"get":function () { return top;}, "set": function () {}});
+
 	var frozen = false;
 
 	var g = svgEl("g");
@@ -515,8 +539,10 @@
 	}
 
 	self.addEventListener("widthchange",onwidthchange);
-	self.addEventListener("widthchange",onheightchange);
 	self.addEventListener("widthchange",oncxchange);
+
+	self.addEventListener("heightchange",onheightchange);
+
 
 	self.addEventListener("widthchange",updateLeft);
 	self.addEventListener("heightchange",updateTop);
@@ -618,13 +644,7 @@
 	return self;
     };
 
-global.Block = (global.module || {}).exports = Block;
 global.MeasuredBlock = (global.module || {}).exports = MeasuredBlock;
-global.Operation = (global.module || {}).exports = Operation;
-global.Row = (global.module || {}).exports = Row;
-global.Column = (global.module || {}).exports = Column;
-global.CustomDependency = (global.module || {}).exports = CustomDependency;
-global.ZoomDependency = (global.module || {}).exports = ZoomDependency;
-global.MirrorDependency = (global.module || {}).exports = MirrorDependency;
-global.ExtractionDependency = (global.module || {}).exports = ExtractionDependency;
+
+global.Diagram = (global.module || {}).exports = Diagram;
 })(this);
