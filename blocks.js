@@ -152,9 +152,7 @@
 	var ratio;
 
 	options = options || {};
-	options.angle = options.angle || 0;
-
-	var deg = Math.PI/180;
+	options.angle = options.angle*Math.PI/180 || 0;
 
 	// self.width
 	Object.defineProperty(self, "width", 
@@ -218,13 +216,13 @@
 
 	// self.topleft
 	Object.defineProperty(self, "topleft",
-			      {"get": function() { return new Point(self.cx - self.width / 2, self.cy - self.height / 2 + self.width * Math.tan(options.angle * deg) / 2);},
+			      {"get": function() { return new Point(self.cx - self.width * Math.cos(options.angle) / 2, self.cy - self.height / 2 + self.width * Math.cos(options.angle) * Math.tan(options.angle) / 2);},
 			       "set": function() {}
 			      });
 
 	// self.topright
 	Object.defineProperty(self, "topright", 
-			      {"get":function() { return self.topleft.translate(self.width, - self.width*Math.tan(options.angle * deg));},
+			      {"get":function() { return self.topleft.translate(self.width * Math.cos(options.angle), - self.width*Math.tan(options.angle) * Math.cos(options.angle));},
 			       "set": function() { }});
 
 	// self.bottomright
@@ -481,7 +479,7 @@
 			var dx = Math.floor((e.movementX       ||
 					     e.mozMovementX    ||
 					     e.webkitMovementX ||
-					     0)  * ctx.viewBox.baseVal.width / ctx.clientWidth / Math.tan(options.angle * Math.PI / 180));
+					     0)  * ctx.viewBox.baseVal.width / ctx.clientWidth / Math.tan(options.angle));
 			self.width += dx;
 			document.querySelector("body").classList.add("resize");
 			e.preventDefault();
@@ -561,13 +559,16 @@
 
 
 	function onwidthchange() {
-	    if (self.width !== rect.width.baseVal.value) {
-		rect.setAttribute("width", self.width);
+	    if (self.width !== rect.width.baseVal.value * Math.cos(options.angle)) {
+		var skewedWidth = Math.cos(options.angle) * self.width;
+		rect.setAttribute("width", skewedWidth);
 		if (options.openbottom) {
 		    rect.setAttribute("stroke-dasharray", openbottomstroke());
 		}
 		if (self.cx) {
-		    measure.setAttribute("x2",self.cx + self.width/2);
+		    rect.setAttribute("x", self.cx - skewedWidth / 2);
+		    measure.setAttribute("x2",self.cx + skewedWidth/2);
+		    measure.setAttribute("x1",self.cx - skewedWidth/2);
 		}
 		measureVal.textContent = Math.floor(self.width) + "px";
 	    }
@@ -586,7 +587,8 @@
 	}
 
 	function oncxchange() {
-	    measure.setAttribute("x2",self.cx + self.width/2);
+	    measure.setAttribute("x2",self.cx + self.width * Math.cos(options.angle)/2);
+	    measure.setAttribute("x1",self.cx - self.width * Math.cos(options.angle)/2);
 	    measureVal.setAttribute("x", self.cx);
 	    title.setAttribute("x", self.cx);
 	}
@@ -599,10 +601,11 @@
 	}
 
 	function updateLeft() {
-	    var newLeft = self.cx - self.width/2;
+	    var skewedWidth = self.width * Math.cos(options.angle);
+	    var newLeft = self.cx - skewedWidth/2;
 	    if (newLeft !== left) {
 		left = newLeft ;
-		g.setAttribute("transform","translate("+(left + self.width/2) +",0) skewY(-" + options.angle +") translate(-" + (left + self.width / 2) +",0)");
+		g.setAttribute("transform","translate("+(left + skewedWidth/2) +",0) skewY(-" + options.angle*180/Math.PI +") translate(-" + (left + skewedWidth / 2) +",0)");
 		rect.setAttribute("x",left);
 		measure.setAttribute("x1",left);
 		self.dispatchEvent({type:"leftchange", value:left});
@@ -611,7 +614,7 @@
 	function updateTop() {
 	    var newTop = self.cy - self.height/2;
 	    if (newTop !== top) {
-		var skew = self.width * Math.tan(options.angle * Math.PI/180) / 2;
+		var skew = self.width * Math.tan(options.angle) / 2;
 		top = newTop;
 		rect.setAttribute("y",top);
 		self.dispatchEvent({type:"topchange", value:top});
