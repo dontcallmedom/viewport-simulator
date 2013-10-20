@@ -62,8 +62,8 @@
 	var self = new BaseObject();
 	root = root || self;
 	var links = [];
-	var sepx = 100; // make it configurable
-	var sepy = 200;
+	var sepx = 500; // make it configurable
+	var sepy = 800;
 	var descendants = blocks.map(function(b) { return b.id;});
 	var acceptChild = !Array.isArray(blockOrBlocks);
 
@@ -95,10 +95,10 @@
 	    if (!acceptChild) {
 		throw new Error("Trying to add a child to a node that does not accept it");
 	    }
-	    var child = addChild(blocks2);
+	    var child = addChild(block2);
 	    var edge = new dep(blocks[0], blocks2);
 	    links.push({edge: edge, child: child});
-	    return diagram;
+	    return child;
 	}
 	
 	self.isZoomOf = function (block2) {
@@ -377,7 +377,7 @@
 	    return fn.bind(block1);
 	}
 
-	var operation = new Operation({}, name);
+	var operation = new Operation({}, name, 40);
 	var self = new Dependency(block1, blocks);
 
 	var outputLine = svgEl( "line");
