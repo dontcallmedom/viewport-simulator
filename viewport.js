@@ -2,23 +2,40 @@
 var svg = document.querySelector("#diagram");
 
 var visibleArea = new MeasuredBlock({adjustable:true, fixedRatio: true, minsize: 320 / 5 , maxsize: 320/0.25 }, "Visible area", 320,568);
-var visibleArea2 = new MeasuredBlock({dep:[{block:visibleArea, type:"mirror"}], callback: function(blocks) { this.width=blocks[0].block.width; this.height=blocks[0].block.height;}}, "Visible area", 320,568);
+var visibleArea2 = new MeasuredBlock({}, "Visible area", 320,568);
 var screen = new MeasuredBlock({}, "Mobile screen",640, 1136);
+
+var mirror = new MirrorDependency(visibleArea2, [visibleArea]);
 
 var content = new MeasuredBlock({openbottom: true, adjustable:true},"Minimum rendered content area", 400,568);
 var viewport = new MeasuredBlock({adjustable:true}, "viewport", 320, 568);
 
-var maxOperation = new Operation(0,0,"max", {dep:[{block:visibleArea2,type:"input"}, {block:viewport, type:"input"}, {block:content, type:"input"}], callback:function(blocks) { this.width = Math.max.apply(null,blocks.map(function(b) { return b.block.width;})); this.height = Math.max.apply(null,blocks.map(function(b) { return b.block.height;}))}});
 
-var layoutCanvas = new MeasuredBlock({openbottom: true, dep: [{block:maxOperation,type:"input"},], callback:function(blocks) { this.width = blocks[0].block.width; this.height = blocks[0].block.height;}},"Layout canvas", 0,0);
+var layoutCanvas = new MeasuredBlock({openbottom: true}, "Layout canvas", 0, 0);
 
-var z = new Bound(visibleArea,screen,"zoom");
-var p = new Bound(visibleArea,layoutCanvas,"project");
+var maxAmongst = function (i) {
+    if (!maxAmongst.values) {
+	maxAmongst.values = [];
+    }
+    maxAmongst.values[i] = 0;
+    return function (e) { 
+	maxAmongst.values[i] = e.value;
+	this.width = Math.max.apply({}, maxAmongst.values);
+    };
+};
+
+var extendsToWidthOf = new CustomDependency(layoutCanvas, [visibleArea2, viewport, content], "Max", [{widthchange: maxAmongst(0)}, {widthchange: maxAmongst(1)}, {widthchange: maxAmongst(2), heightchange: function (e) { this.height = e.value;}}]);
+extendsToWidthOf.display(svg, 400, 400);
+
+var zoomOf = new ZoomDependency(screen, [visibleArea]);
+zoomOf.display(svg);
+
+var projection = new ExtractionDependency(visibleArea,[layoutCanvas]);
+projection.display(svg);
+
 var r = new Row(svg, 0, 910, 200);
-r.addBlock(screen).addBlock(visibleArea).addBlock(layoutCanvas).addBlock(maxOperation);
+r.addBlock(screen).addBlock(visibleArea).addBlock(layoutCanvas);
 var c = r.addColumn(-800, 320).addBlock(content).addBlock(viewport).addBlock(visibleArea2);
-z.display(svg);
-p.display(svg);
 
 visibleArea.freeze();
 
