@@ -1,7 +1,8 @@
 var svg = document.querySelector("#diagram");
 
 var visibleArea = new MeasuredBlock({adjustable:true, fixedRatio: true, minsize: 320 / 5 , maxsize: 320/0.25 }, "Visible area", 320,568);
-var visibleArea2 = visibleArea.mirror();
+var visibleArea2 = new MeasuredBlock({}, "Visible area", 0, 0);
+visibleArea2.mirrorOf(visibleArea);
 var screen = new MeasuredBlock({}, "Mobile screen",640, 1136);
 
 var content = new MeasuredBlock({openbottom: true, adjustable:true},"Minimum rendered content area", 400,568);
