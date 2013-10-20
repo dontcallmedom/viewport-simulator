@@ -104,5 +104,7 @@ content.addEventListener('widthchange', function () {
 });
 
 viewport.addEventListener('widthchange', function () {
-    document.getElementById('widthvalue').value = document.getElementById('width').value =  viewport.width ;
+    if (document.getElementById('numericwidth').checked) {
+	document.getElementById('widthvalue').value = document.getElementById('width').value =  viewport.width ;
+    }
 });
