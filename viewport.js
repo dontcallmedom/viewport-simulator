@@ -23,7 +23,7 @@ function updateViewport() {
 	var values = [];
 	if (document.getElementById('hasWidth').checked) { 
 	    values.push("width=" + (document.getElementById('numericwidth').checked ? document.getElementById('width').value : "device-width"));
-	    viewport.width = 320 ;
+	    viewport.width = (document.getElementById('numericwidth').checked ? document.getElementById('width').value : 320) ;
 	    if (document.getElementById('numericwidth').checked) {
 		viewport.width = parseInt(document.getElementById('width').value,10)  ;
 	    }
@@ -53,13 +53,18 @@ function updateVisibleArea() {
 
 updateViewport();
 updateVisibleArea();
-document.getElementById('widthvalue').value = document.getElementById('width').value = viewport.width ;
+document.getElementById('widthvalue').value = document.getElementById('width').value = 320 ;
 document.getElementById('scalevalue').value = document.getElementById('scale').value;
 document.getElementById('contentvalue').value = document.getElementById('content').value = content.width ;
 document.getElementById('hasWidth').addEventListener("change", function () {
     updateViewport();
     document.getElementById('devicewidth').disabled = !this.checked;
     document.getElementById('numericwidth').disabled = !this.checked;
+    if (document.getElementById('devicewidth').checked) {
+	viewport.freeze();
+    } else {
+	viewport.unfreeze();
+    }
 });
 document.getElementById('hasScale').addEventListener("change", function () {
     updateViewport();
@@ -73,11 +78,14 @@ document.getElementById('hasScale').addEventListener("change", function () {
 
 });
 document.getElementById('devicewidth').addEventListener("change", function () {
+    viewport.freeze();
+    document.getElementById('numericwidth').value=320;
     document.getElementById('width').disabled = this.checked;
     updateViewport();
 });
 
 document.getElementById('numericwidth').addEventListener("change", function () {
+    viewport.unfreeze();
     document.getElementById('width').disabled = !this.checked;
     updateViewport();
 });
