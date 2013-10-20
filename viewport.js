@@ -1,41 +1,19 @@
-
 var svg = document.querySelector("#diagram");
 
 var visibleArea = new MeasuredBlock({adjustable:true, fixedRatio: true, minsize: 320 / 5 , maxsize: 320/0.25 }, "Visible area", 320,568);
-var visibleArea2 = new MeasuredBlock({}, "Visible area", 320,568);
+var visibleArea2 = visibleArea.mirror();
 var screen = new MeasuredBlock({}, "Mobile screen",640, 1136);
-
-var mirror = new MirrorDependency(visibleArea2, [visibleArea]);
 
 var content = new MeasuredBlock({openbottom: true, adjustable:true},"Minimum rendered content area", 400,568);
 var viewport = new MeasuredBlock({adjustable:true}, "viewport", 320, 568);
 
 
-var layoutCanvas = new MeasuredBlock({openbottom: true}, "Layout canvas", 0, 0);
+var layoutCanvas = new MeasuredBlock({openbottom: true}, "Layout canvas", 400, 600);
 
-var maxAmongst = function (i) {
-    if (!maxAmongst.values) {
-	maxAmongst.values = [];
-    }
-    maxAmongst.values[i] = 0;
-    return function (e) { 
-	maxAmongst.values[i] = e.value;
-	this.width = Math.max.apply({}, maxAmongst.values);
-    };
-};
+var diagram = new Diagram(screen);
+diagram.isZoomOf(visibleArea).isExtractionOf(layoutCanvas).extendsToWidthOf([content,viewport,visibleArea2]);
 
-var extendsToWidthOf = new CustomDependency(layoutCanvas, [visibleArea2, viewport, content], "Max", [{widthchange: maxAmongst(0)}, {widthchange: maxAmongst(1)}, {widthchange: maxAmongst(2), heightchange: function (e) { this.height = e.value;}}]);
-extendsToWidthOf.display(svg, 400, 400);
-
-var zoomOf = new ZoomDependency(screen, [visibleArea]);
-zoomOf.display(svg);
-
-var projection = new ExtractionDependency(visibleArea,[layoutCanvas]);
-projection.display(svg);
-
-var r = new Row(svg, 0, 910, 200);
-r.addBlock(screen).addBlock(visibleArea).addBlock(layoutCanvas);
-var c = r.addColumn(-800, 320).addBlock(content).addBlock(viewport).addBlock(visibleArea2);
+diagram.display(svg, 400, 910);
 
 visibleArea.freeze();
 
