@@ -238,10 +238,9 @@
 			       "set": function() { }});
 
 
-	self.mirror = function () {
-	    var block = Object.create(Object.getPrototypeOf(self));
-	    var mirror = new MirrorDependency(self, [block]);
-	    return block;
+	self.mirrorOf = function (block) {
+	    new MirrorDependency(self, [block]);
+	    self.refresh();
 	};
 
 	self.display = function (ctx, x, y) {
