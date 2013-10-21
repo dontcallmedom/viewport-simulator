@@ -499,24 +499,12 @@
 		    return false;
 		};	
 		widthHandle.addEventListener("mousedown", mouseHandle, false);	
-
-
-		var posX = x + self.width/2;
-		var posY = y - self.height / 4;
-		widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
 	    }
 	    if (options.openbottom) {
 		rect.setAttribute("stroke-dasharray", openbottomstroke());
 	    }
 
 	    ctx.appendChild(g);
-	    if (options.adjustable) {
-		self.addEventListener("widthchange", function(newWidth) {
-		    var posX = self.cx + self.width/2;
-		    var posY = self.cy - self.height/4;
-		    widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
-		});
-	    }
 	}
 
 	self.freeze = function () {
@@ -571,6 +559,14 @@
 		    measure.setAttribute("x1",self.cx - skewedWidth/2);
 		}
 		measureVal.textContent = Math.floor(self.width) + "px";
+
+		if (options.adjustable) {
+		    var posX = self.cx + skewedWidth/2;
+		    var posY = self.cy - self.height/4;
+		    widthHandle.setAttribute("transform","translate(" + posX + "," + posY + ")");
+
+		}
+
 	    }
 	}
 
