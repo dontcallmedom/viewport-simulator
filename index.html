@@ -16,7 +16,7 @@ text.operation { fill:white;}
 .resize { cursor:e-resize;}
 path.resize { fill:blue;}
 polygon.projected { fill: #eee; opacity:0.5; pointer-events:none;}
-path.frozen { cursor: none; fill: gray;}
+path.frozen { cursor: auto; fill: gray;}
 #meta { float: right;}
 figcaption { text-align:center;}
 #contentchoice p, #contentchoice figure {  margin:0 auto; width:50%; text-align:center;}
@@ -89,7 +89,7 @@ figcaption { text-align:center;}
 <label class=switch><input type='checkbox' id='hasWidth'> width:</label><label><input type='radio' id='devicewidth' checked disabled name='widthopt'> device-width</label> OR <label><input disabled type='radio' name='widthopt' id='numericwidth'> numeric value: <input type=range min=0 step=10 max=2000 id='width' value=320 disabled/></label><output id='widthvalue'></output><br/>
 <label class=switch><input type='checkbox' id='hasScale'> initial-scale:</label><label><input type=range min=0.25 max=5 step=0.25 id='scale' value=1 disabled/></label><output id='scalevalue'></output<br/>
 </fieldset>
-<svg id="diagram" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2600 1280" preserveAspectRatio='xMinYMin meet'>
+<svg id="diagram" xmlns="http://www.w3.org/2000/svg" viewBox="0 -500 3000 3000" preserveAspectRatio='xMidYMid meet'>
 <defs>
   <linearGradient id="aigrd1" x1="0" y1="100%" x2="100%" y2="100%">
     <stop  offset="0" style="stop-color:#FB0F0C"/>
