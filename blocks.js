@@ -111,22 +111,13 @@
 
 	// no return, this is necessarily a leave
 	self.extendsToWidthOf = function (blocks2) {
-	    var maxAmongst = function (i) {
-		if (!maxAmongst.values) {
-		    maxAmongst.values = [];
-		}
-		maxAmongst.values[i] = 0;
-		return function (e) { 
-		    maxAmongst.values[i] = e.value;
-		    this.width = Math.max.apply({}, maxAmongst.values);
-		};
-	    };
-	    
-	    var ExtendsToWidthOf = function (b, c) {
-		return new CustomDependency(b, c, "Max", [{widthchange: maxAmongst(0)}, {widthchange: maxAmongst(1)}, {widthchange: maxAmongst(2), heightchange: function (e) { this.height = e.value;}}]);
-	    };
 
 	    return addLink(blocks2, ExtendsToWidthOf);
+	};
+
+
+	self.addCustomLink = function (blocks2, dependency) {
+	    return addLink(blocks2, dependency);
 	};
 
 	self.display = function (ctx, x, y) {
@@ -542,7 +533,7 @@
 	    function repeatString(str, num) {
 		return new Array( Math.floor(num + 1) ).join( str );
 	    }
-	    return (self.width + self.height * 3 / 4) + "," + repeatString("2,2,",self.height / 16) + self.width + "," + repeatString("2,2,",self.height / 16) + (self.width + self.height * 3 / 4);
+	    return (self.width*Math.cos(options.angle) + self.height * 3 / 4) + "," + repeatString("2,2,",self.height / 16) + self.width + "," + repeatString("2,2,",self.height / 16) + (self.width*Math.cos(options.angle) + self.height * 3 / 4);
 	}
 
 
@@ -643,6 +634,6 @@
     };
 
 global.MeasuredBlock = (global.module || {}).exports = MeasuredBlock;
-
+global.CustomDependency = (global.module || {}).exports = CustomDependency;
 global.Diagram = (global.module || {}).exports = Diagram;
 })(this);

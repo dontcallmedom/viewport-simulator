@@ -9,6 +9,19 @@ var content = new MeasuredBlock({openbottom: true, adjustable:true},"Minimum ren
 var viewport = new MeasuredBlock({adjustable:true}, "viewport", 320, 568);
 
 
+var ExtendsToWidthOf = function (b, c) {
+    var maxAmongst = function (i) {
+	if (!maxAmongst.values) {
+	    maxAmongst.values = [];
+	}
+	maxAmongst.values[i] = 0;
+	return function (e) { 
+	    maxAmongst.values[i] = e.value;
+	    this.width = Math.max.apply({}, maxAmongst.values);
+	};
+    };
+    return new CustomDependency(b, c, "Max", [{widthchange: maxAmongst(0)}, {widthchange: maxAmongst(1)}]);
+};
 var layoutCanvas = new MeasuredBlock({openbottom: true}, "Layout canvas", 400, 600);
 
 var diagram = new Diagram(screen);
