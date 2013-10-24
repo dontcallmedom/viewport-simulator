@@ -1,13 +1,16 @@
 var svg = document.querySelector("#diagram");
 
-var visibleArea = new MeasuredBlock({adjustable:true, fixedRatio: true, minsize: 320 / 5 , maxsize: 320/0.25 }, "Visible area", 320,568);
-var visibleArea2 = new MeasuredBlock({}, "Visible area", 0, 0);
+var visibleArea = new MeasuredBlock({adjustable:true, fixedRatio: true, minsize: 320 / 5 , maxsize: 320/0.25 }, "Visible area (zoom)", 320,568);
+var visibleArea2 = new MeasuredBlock({}, "Visible area (zoom)", 0, 0);
 visibleArea2.mirrorOf(visibleArea);
 var screen = new MeasuredBlock({}, "Mobile screen",640, 1136);
 
-var content = new MeasuredBlock({openbottom: true, adjustable:true},"Minimum rendered content area", 400,568);
+var content = new MeasuredBlock({openbottom: true, adjustable:true},"Fixed content width", 400,568);
 var viewport = new MeasuredBlock({adjustable:true}, "viewport", 320, 568);
+var body = new MeasuredBlock({openbottom:true}, "<body>", 0, 500);
+var cssbody = new MeasuredBlock({openbottom:true}, "body {width}", 0, 500);
 
+var viewableArea = new MeasuredBlock({openbottom: true}, "Viewable area", 400, 600);
 
 var ExtendsToWidthOf = function (b, c) {
     var maxAmongst = function (i) {
@@ -22,11 +25,27 @@ var ExtendsToWidthOf = function (b, c) {
     };
     return new CustomDependency(b, c, "Max", [{widthchange: maxAmongst(0)}, {widthchange: maxAmongst(1)}]);
 };
-var layoutCanvas = new MeasuredBlock({openbottom: true}, "Layout canvas", 400, 600);
 
+var AOrMaxOfBC = function(block, blocks) {
+    var aormaxbc = function(l) {
+	if (!aormaxbc.values) {
+	    aormaxbc.values = {};
+	}
+	aormaxbc.values[l] = 0;
+	return function (e) {
+	    aormaxbc.values[l] = e.value;
+	    this.width = aormaxbc.values['A'] ? aormaxbc.values['A'] : Math.max(aormaxbc.values['B'], aormaxbc.values['C']);
+	};
+    };
+    return new CustomDependency(block, blocks, "Switch", [{widthchange: aormaxbc('A')}, {widthchange: aormaxbc('B')}, {widthchange: aormaxbc('C')}]);
+};
+
+
+var bodyDiagram = new Diagram(body);
+bodyDiagram.addCustomLink([cssbody, viewport, visibleArea2], AOrMaxOfBC);
 var diagram = new Diagram(screen);
-diagram.isZoomOf(visibleArea).isExtractionOf(layoutCanvas).extendsToWidthOf([content,viewport,visibleArea2]);
-
+diagram.isZoomOf(visibleArea).isExtractionOf(viewableArea).extendsToWidthOf([body, content]);
+bodyDiagram.display(svg, 2200,910);
 diagram.display(svg, 400, 910);
 
 visibleArea.freeze();
@@ -38,7 +57,7 @@ function updateViewport() {
 	    values.push("width=" + (document.getElementById('numericwidth').checked ? document.getElementById('width').value : "device-width"));
 	    viewport.width = (document.getElementById('numericwidth').checked ? document.getElementById('width').value : 320) ;
 	    if (document.getElementById('numericwidth').checked) {
-		viewport.width = parseInt(document.getElementById('width').value,10)  ;
+		viewport.width = Math.floor(document.getElementById('width').value)  ;
 	    }
 
 	} else {
@@ -47,6 +66,8 @@ function updateViewport() {
 	if (document.getElementById('hasScale').checked) { 
 	    values.push("initial-scale=" + document.getElementById('scale').value);
 	    visibleArea.width = 320 / document.getElementById('scale').value;
+	} else {
+	    visibleArea.width = 0;
 	}
 
 	document.getElementById('meta').value='<meta name="viewport" content="' + values.join(',') + '">'; 
@@ -54,14 +75,15 @@ function updateViewport() {
 	viewport.width = 980 ;
 	document.getElementById('meta').value='<meta name="viewport" content="">'; 
     }
-}
-
-function updateVisibleArea() {
     if (document.getElementById('hasScale').checked) {
 	visibleArea.width = visibleArea.width / document.getElementById('scale').value;
     } else {
-	visibleArea.width = layoutCanvas.width ;
+	visibleArea2.width = 0;
+	visibleArea.width = viewableArea.width ;
     }
+}
+
+function updateVisibleArea() {
 }
 
 updateViewport();
@@ -71,9 +93,10 @@ document.getElementById('scalevalue').value = document.getElementById('scale').v
 document.getElementById('contentvalue').value = document.getElementById('content').value = content.width ;
 document.getElementById('hasWidth').addEventListener("change", function () {
     updateViewport();
+    updateVisibleArea();
     document.getElementById('devicewidth').disabled = !this.checked;
     document.getElementById('numericwidth').disabled = !this.checked;
-    if (document.getElementById('devicewidth').checked) {
+    if (document.getElementById('devicewidth').checked || document.getElementById('numericwidth').disabled) {
 	viewport.freeze();
     } else {
 	viewport.unfreeze();
@@ -81,7 +104,6 @@ document.getElementById('hasWidth').addEventListener("change", function () {
 });
 document.getElementById('hasScale').addEventListener("change", function () {
     updateViewport();
-    updateVisibleArea();
     document.getElementById('scale').disabled = !this.checked;
     if (this.checked) {
 	visibleArea.unfreeze();
@@ -92,7 +114,7 @@ document.getElementById('hasScale').addEventListener("change", function () {
 });
 document.getElementById('devicewidth').addEventListener("change", function () {
     viewport.freeze();
-    document.getElementById('numericwidth').value=320;
+    document.getElementById('width').value=320;
     document.getElementById('width').disabled = this.checked;
     updateViewport();
 });
@@ -125,7 +147,7 @@ content.addEventListener('widthchange', function () {
 });
 
 viewport.addEventListener('widthchange', function () {
-    if (document.getElementById('numericwidth').checked) {
+    if (document.getElementById('numericwidth').checked && !document.getElementById('numericwidth').disabled) {
 	document.getElementById('widthvalue').value = document.getElementById('width').value =  viewport.width ;
     }
 });
